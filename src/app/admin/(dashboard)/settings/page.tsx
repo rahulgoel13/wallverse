@@ -43,7 +43,7 @@ export default async function AdminSettings() {
           </div>
           <div className="flex justify-between gap-4">
             <dt className="opacity-60">Database</dt>
-            <dd>SQLite (prisma/dev.db)</dd>
+            <dd>PostgreSQL (DATABASE_URL)</dd>
           </div>
           <div className="flex justify-between gap-4">
             <dt className="opacity-60">Admin account</dt>

@@ -5,6 +5,15 @@ import { journalPosts } from "../src/data/journal";
 const db = new PrismaClient();
 
 async function main() {
+  // The seed runs on every Vercel deploy. Re-seeding a live store would
+  // overwrite prices, stock and copy edited in the admin, so it only fills an
+  // empty database. SEED_FORCE=1 re-applies the demo catalogue deliberately.
+  const existing = await db.product.count();
+  if (existing > 0 && process.env.SEED_FORCE !== "1") {
+    console.log(`Catalogue already has ${existing} products — skipping seed (set SEED_FORCE=1 to re-apply).`);
+    return;
+  }
+
   for (const c of collections) {
     await db.collection.upsert({
       where: { id: c.id },

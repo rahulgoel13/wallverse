@@ -3,6 +3,10 @@ import type { ReactNode } from "react";
 import { requireAdmin } from "@/lib/admin-auth";
 import { logoutAction } from "@/app/admin/actions";
 
+// Admin pages are per-request and behind a session: never prerender them at
+// build time (that ran their database queries with no session and no request).
+export const dynamic = "force-dynamic";
+
 const nav = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/products", label: "Products" },

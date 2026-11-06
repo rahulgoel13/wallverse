@@ -16,21 +16,42 @@ identity, contact details and commerce defaults are centralized in [`src/lib/sit
 
 ```bash
 npm install
-cp .env.example .env     # then edit the admin credentials/secret
-npm run setup            # generates textures, creates the SQLite db, seeds the catalogue
+cp .env.example .env     # set DATABASE_URL(+_UNPOOLED) and the admin credentials/secret
+npm run setup            # generates textures, creates the tables, seeds the catalogue
 npm run dev              # http://localhost:3000
 ```
 
-`npm run setup` is idempotent — it regenerates the 28 SVG textures, pushes the Prisma schema to
-`prisma/dev.db` (SQLite, no external database needed) and seeds 10 collections, 28 products,
-4 journal essays and 2 demo coupons (`WELCOME10`, `FLAT500`).
+The store uses **PostgreSQL**. Locally, point both `DATABASE_URL` and `DATABASE_URL_UNPOOLED` at
+any Postgres — a local install (`postgresql://USER:PASSWORD@localhost:5432/wallverse`) or the
+same Neon database production uses.
+
+`npm run setup` regenerates the 28 SVG textures, pushes the Prisma schema and seeds 10
+collections, 28 products, 4 journal essays and 2 demo coupons (`WELCOME10`, `FLAT500`). The seed
+only fills an **empty** database, so it never overwrites prices or stock edited in the admin;
+run `SEED_FORCE=1 npm run db:seed` to re-apply the demo catalogue on purpose.
+
+## Deploying to Vercel
+
+1. **Add a database:** in the Vercel project, open **Storage → Create Database → Neon
+   (Postgres)** and connect it to the project. This sets `DATABASE_URL` and
+   `DATABASE_URL_UNPOOLED` for every environment.
+2. **Add the admin variables** under **Settings → Environment Variables**: `ADMIN_EMAIL`,
+   `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET` (e.g. `openssl rand -hex 32`). Optionally the
+   `RAZORPAY_*` keys.
+3. **Redeploy.** The `vercel-build` script generates the Prisma client, pushes the schema,
+   seeds the catalogue if the database is empty, then builds. The canonical domain is detected
+   from Vercel automatically; set `NEXT_PUBLIC_SITE_URL` only for a custom domain.
+
+`prisma db push` refuses changes that would lose data, so a redeploy can't silently drop
+columns. Once the store holds real data, switch to `prisma migrate` for reviewed migrations.
 
 ### All scripts
 
 | Script | What it does |
 | --- | --- |
 | `npm run dev` | Development server (Turbopack) |
-| `npm run build` / `npm start` | Production build / serve |
+| `npm run build` / `npm start` | Production build / serve (does not touch the database schema) |
+| `npm run vercel-build` | What Vercel runs: client generate, schema push, seed-if-empty, build |
 | `npm run setup` | Textures + schema push + seed, in one step |
 | `npm run textures` | Regenerate `public/textures/*.svg` deterministically |
 | `npm run db:push` / `npm run db:seed` | Prisma schema push / seed only |
@@ -41,8 +62,9 @@ npm run dev              # http://localhost:3000
 
 | Variable | Purpose |
 | --- | --- |
-| `DATABASE_URL` | SQLite file, default `file:./dev.db` |
-| `NEXT_PUBLIC_SITE_URL` | Canonical URL for SEO/sitemap |
+| `DATABASE_URL` | Pooled Postgres connection used by the app |
+| `DATABASE_URL_UNPOOLED` | Direct Postgres connection used for schema pushes (same value if you have no pooler) |
+| `NEXT_PUBLIC_SITE_URL` | Optional canonical domain override (Vercel's production domain is used by default) |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Credentials for `/admin` |
 | `ADMIN_SESSION_SECRET` | Long random string signing the admin session cookie |
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | Optional. Empty ⇒ the store runs in clearly-labelled **demo payment mode**; set both to enable the real Razorpay checkout + server-side signature verification |
@@ -104,7 +126,7 @@ threshold, GST display rate) stored in the database.
   [`three-utils.ts`](src/components/three/three-utils.ts)).
 - **Stack:** Next.js 16 (App Router, server actions), TypeScript strict, Tailwind v4 theme
   tokens, React Three Fiber + drei, GSAP ScrollTrigger + Lenis, Zustand (persisted cart/wishlist/
-  active design), react-hook-form + zod, Prisma + SQLite.
+  active design), react-hook-form + zod, Prisma + PostgreSQL.
 - **Quality tiers:** phone/coarse-pointer devices get reduced geometry counts, capped DPR and no
   shadow maps; scenes mount lazily near the viewport and textures are cached/disposed.
 

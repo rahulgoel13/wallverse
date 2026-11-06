@@ -94,13 +94,15 @@ export async function getProducts(filters: ShopFilters = {}) {
     };
   }
   if (q) {
+    // Postgres `contains` is case-sensitive; search must not be.
+    const match = { contains: q, mode: "insensitive" as const };
     where.OR = [
-      { name: { contains: q } },
-      { description: { contains: q } },
-      { colorFamily: { contains: q } },
-      { style: { contains: q } },
-      { collection: { name: { contains: q } } },
-      { collection: { slug: { contains: q } } },
+      { name: match },
+      { description: match },
+      { colorFamily: match },
+      { style: match },
+      { collection: { name: match } },
+      { collection: { slug: match } },
     ];
   }
 

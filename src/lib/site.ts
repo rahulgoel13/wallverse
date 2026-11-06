@@ -7,7 +7,13 @@ export const site = {
   tagline: "Walls are no longer just walls.",
   description:
     "An immersive wallpaper discovery and shopping destination. Explore premium wall designs in surreal architectural environments, visualize them in realistic rooms, and purchase the designs you love.",
-  url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+  // Canonical origin for metadata and the sitemap. On Vercel the production
+  // domain is provided automatically; NEXT_PUBLIC_SITE_URL overrides it.
+  url:
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : "http://localhost:3000"),
   email: "studio@wallverse.example",
   phone: "+91 00000 00000",
   address: "Studio WALLVERSE, New Delhi, India",

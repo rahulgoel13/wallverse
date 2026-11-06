@@ -3,8 +3,12 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // Pooled connection used by the app at runtime.
+  url       = env("DATABASE_URL")
+  // Direct connection used by `prisma db push` / migrations (pgbouncer can't run DDL).
+  // Neon's Vercel integration sets both; without a pooler, use the same URL twice.
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 model Collection {
