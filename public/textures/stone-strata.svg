@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><rect width="1024" height="1024" fill="#9b968c"/><defs>
+      <filter id="c" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="5" seed="29" stitchTiles="stitch"/>
+        <feColorMatrix type="matrix" values="0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0 0 0 0 1"/><feComponentTransfer><feFuncR type="table" tableValues="0.655 0.537 0.608 0.455"/><feFuncG type="table" tableValues="0.635 0.518 0.588 0.435"/><feFuncB type="table" tableValues="0.600 0.478 0.549 0.400"/></feComponentTransfer>
+      </filter>
+      <filter id="speck" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="32" stitchTiles="stitch"/>
+        <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.5 0.5 0.5 -0.9 0"/>
+      </filter>
+    </defs>
+    <rect width="1024" height="1024" filter="url(#c)"/>
+    <rect width="1024" height="1024" filter="url(#speck)" opacity="0.1"/></svg>

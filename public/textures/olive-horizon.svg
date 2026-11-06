@@ -1,0 +1,2 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><rect width="1024" height="1024" fill="#e9e4d5"/><defs><pattern id="s" width="480" height="64" patternUnits="userSpaceOnUse"><rect width="480" height="64" fill="#e9e4d5"/><rect x="0" width="160" height="64" fill="#e9e4d5" opacity="1"/><rect x="160" width="160" height="64" fill="#c9c4ae" opacity="1"/><rect x="320" width="160" height="64" fill="#9aa083" opacity="1"/></pattern></defs>
+     <rect width="1024" height="1024" fill="url(#s)"/></svg>

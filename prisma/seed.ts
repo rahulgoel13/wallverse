@@ -1,0 +1,83 @@
+import { PrismaClient } from "@prisma/client";
+import { collections, products, textureUrl } from "../src/data/catalogue";
+import { journalPosts } from "../src/data/journal";
+
+const db = new PrismaClient();
+
+async function main() {
+  for (const c of collections) {
+    await db.collection.upsert({
+      where: { id: c.id },
+      update: { slug: c.slug, name: c.name, description: c.description, accent: c.accent, order: c.order },
+      create: { id: c.id, slug: c.slug, name: c.name, description: c.description, accent: c.accent, order: c.order },
+    });
+  }
+
+  for (const p of products) {
+    const collection = collections.find((c) => c.slug === p.collection);
+    if (!collection) throw new Error(`Unknown collection ${p.collection} for ${p.slug}`);
+    const data = {
+      sku: p.sku,
+      slug: p.slug,
+      name: p.name,
+      description: p.description,
+      price: p.price,
+      salePrice: p.salePrice ?? null,
+      material: p.material,
+      finish: p.finish,
+      colorFamily: p.colorFamily,
+      style: p.style,
+      rollWidthCm: p.rollWidthCm,
+      rollLengthM: p.rollLengthM,
+      coverageSqm: p.coverageSqm,
+      patternRepeatCm: p.patternRepeatCm,
+      patternMatch: p.patternMatch,
+      priceUnit: p.priceUnit,
+      texture: textureUrl(p.slug),
+      accent: p.accent,
+      inStock: p.inStock,
+      featured: p.featured,
+      newArrival: p.newArrival,
+      popularity: p.popularity,
+      installationNotes: p.installationNotes,
+      relatedSlugs: p.related.join(","),
+      collectionId: collection.id,
+    };
+    await db.product.upsert({ where: { slug: p.slug }, update: data, create: data });
+  }
+
+  for (const j of journalPosts) {
+    const data = {
+      slug: j.slug,
+      title: j.title,
+      excerpt: j.excerpt,
+      content: j.content,
+      cover: j.cover,
+      tags: j.tags,
+      publishedAt: new Date(j.publishedAt),
+    };
+    await db.journalPost.upsert({ where: { slug: j.slug }, update: data, create: data });
+  }
+
+  await db.coupon.upsert({
+    where: { code: "WELCOME10" },
+    update: { type: "percent", value: 10, minSubtotal: 2000, active: true },
+    create: { code: "WELCOME10", type: "percent", value: 10, minSubtotal: 2000, active: true },
+  });
+  await db.coupon.upsert({
+    where: { code: "FLAT500" },
+    update: { type: "flat", value: 500, minSubtotal: 6000, active: true },
+    create: { code: "FLAT500", type: "flat", value: 500, minSubtotal: 6000, active: true },
+  });
+
+  console.log(
+    `Seeded ${collections.length} collections, ${products.length} products, ${journalPosts.length} journal posts, 2 coupons.`
+  );
+}
+
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(() => db.$disconnect());

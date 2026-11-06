@@ -1,0 +1,150 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Collection {
+  id          String    @id
+  slug        String    @unique
+  name        String
+  description String
+  accent      String
+  order       Int       @default(0)
+  products    Product[]
+}
+
+model Product {
+  id                String      @id @default(cuid())
+  sku               String      @unique
+  slug              String      @unique
+  name              String
+  description       String
+  price             Int // INR, whole rupees
+  salePrice         Int?
+  material          String
+  finish            String
+  colorFamily       String
+  style             String
+  rollWidthCm       Float
+  rollLengthM       Float
+  coverageSqm       Float
+  patternRepeatCm   Float
+  patternMatch      String
+  priceUnit         String
+  texture           String // /textures/<slug>.svg — used across 2D and 3D
+  accent            String
+  inStock           Boolean     @default(true)
+  featured          Boolean     @default(false)
+  newArrival        Boolean     @default(false)
+  popularity        Int         @default(0)
+  installationNotes String
+  relatedSlugs      String      @default("") // comma-separated product slugs
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  collection        Collection  @relation(fields: [collectionId], references: [id])
+  collectionId      String
+  orderItems        OrderItem[]
+
+  @@index([collectionId])
+  @@index([featured])
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String
+  createdAt DateTime @default(now())
+  orders    Order[]
+
+  @@index([email])
+}
+
+model Order {
+  id            String      @id // readable: WV-XXXXXX
+  status        String      @default("pending") // pending|confirmed|shipped|delivered|cancelled
+  paymentMethod String // demo|razorpay|cod
+  paymentStatus String      @default("pending") // pending|demo_paid|paid|failed
+  subtotal      Int
+  discount      Int         @default(0)
+  shipping      Int         @default(0)
+  tax           Int         @default(0)
+  total         Int
+  couponCode    String?
+  notes         String?
+  addressLine   String
+  city          String
+  state         String
+  pincode       String
+  country       String      @default("India")
+  createdAt     DateTime    @default(now())
+  customer      Customer    @relation(fields: [customerId], references: [id])
+  customerId    String
+  items         OrderItem[]
+
+  @@index([customerId])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  name      String // snapshot of product name at purchase time
+  unitPrice Int
+  quantity  Int
+  total     Int
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId   String
+  product   Product @relation(fields: [productId], references: [id])
+  productId String
+
+  @@index([orderId])
+}
+
+model Coupon {
+  code        String    @id
+  type        String // percent|flat
+  value       Int
+  minSubtotal Int       @default(0)
+  active      Boolean   @default(true)
+  expiresAt   DateTime?
+}
+
+model Enquiry {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String
+  message   String
+  status    String   @default("new") // new|answered|closed
+  createdAt DateTime @default(now())
+}
+
+model JournalPost {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  excerpt     String
+  content     String
+  cover       String
+  tags        String
+  publishedAt DateTime
+}
+
+model WishlistItem {
+  id        String   @id @default(cuid())
+  sessionId String
+  productId String
+  createdAt DateTime @default(now())
+
+  @@unique([sessionId, productId])
+}
+
+model Setting {
+  key   String @id
+  value String
+}

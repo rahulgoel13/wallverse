@@ -1,0 +1,183 @@
+@import "tailwindcss";
+
+@theme inline {
+  /* WALLVERSE palette — single source of truth. Never use raw hex in components. */
+  --color-ink: #10100f;
+  --color-obsidian: #181817;
+  --color-ivory: #f4f0e8;
+  --color-limestone: #d9d0c1;
+  --color-olive: #777c61;
+  --color-champagne: #b99a6a;
+  --color-citron: #d6ff72;
+  --color-error: #e2574c;
+
+  --font-serif: var(--font-fraunces), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-grotesk), system-ui, -apple-system, sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+  --header-h: 4.5rem;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  background: var(--color-ink);
+  color: var(--color-ivory);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+::selection {
+  background: var(--color-citron);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-citron);
+  outline-offset: 3px;
+}
+
+.on-light :focus-visible,
+.on-light:focus-visible {
+  outline-color: var(--color-ink);
+}
+
+/* ——— Utilities ——— */
+
+.container-wv {
+  padding-inline: 1.25rem;
+  margin-inline: auto;
+  width: 100%;
+  max-width: 96rem;
+}
+@media (min-width: 768px) {
+  .container-wv {
+    padding-inline: 2.5rem;
+  }
+}
+@media (min-width: 1024px) {
+  .container-wv {
+    padding-inline: 4rem;
+  }
+}
+
+.label {
+  font-family: var(--font-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 0.6875rem;
+  font-weight: 500;
+}
+
+.display {
+  font-family: var(--font-serif);
+  font-weight: 350;
+  line-height: 0.95;
+  letter-spacing: -0.015em;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Hairline borders that read as drafting lines */
+.hairline {
+  border-color: color-mix(in srgb, currentColor 18%, transparent);
+}
+
+/* ——— Lenis smooth scroll ——— */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* ——— Texture tile backgrounds (used by TexturePreview / swatches) ——— */
+.texture-tile {
+  background-repeat: repeat;
+  background-size: var(--tile-size, 220px);
+}
+
+/* ——— Marquee ——— */
+@keyframes wv-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.marquee-track {
+  animation: wv-marquee 40s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
+}
+
+/* ——— Editorial prose ——— */
+.prose-wv > p {
+  max-width: 42rem;
+  font-size: 0.9375rem;
+  line-height: 1.8;
+  opacity: 0.78;
+}
+.prose-wv > p + p {
+  margin-top: 1.25rem;
+}
+.prose-wv > h2 {
+  font-family: var(--font-serif);
+  font-size: 1.75rem;
+  margin-top: 3rem;
+  margin-bottom: 1rem;
+}
+.prose-wv > ul {
+  max-width: 42rem;
+  list-style: disc;
+  padding-left: 1.25rem;
+  font-size: 0.9375rem;
+  line-height: 1.8;
+  opacity: 0.78;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+/* ——— View transitions between dark/light feel deliberate ——— */
+.section-light {
+  background: var(--color-ivory);
+  color: var(--color-ink);
+}
+.section-dark {
+  background: var(--color-ink);
+  color: var(--color-ivory);
+}
