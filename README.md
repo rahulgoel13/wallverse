@@ -16,31 +16,45 @@ identity, contact details and commerce defaults are centralized in [`src/lib/sit
 
 ```bash
 npm install
-cp .env.example .env     # set DATABASE_URL(+_UNPOOLED) and the admin credentials/secret
-npm run setup            # generates textures, creates the tables, seeds the catalogue
-npm run dev              # http://localhost:3000
+npm run dev              # http://localhost:3000 — no database or .env needed
 ```
 
-The store uses **PostgreSQL**. Locally, point both `DATABASE_URL` and `DATABASE_URL_UNPOOLED` at
-any Postgres — a local install (`postgresql://USER:PASSWORD@localhost:5432/wallverse`) or the
-same Neon database production uses.
+## Two data modes
 
-`npm run setup` regenerates the 28 SVG textures, pushes the Prisma schema and seeds 10
-collections, 28 products, 4 journal essays and 2 demo coupons (`WELCOME10`, `FLAT500`). The seed
+The store runs in one of two modes, chosen by the `DATA_SOURCE` variable.
+
+**Static (default — no database).** The catalogue, collections, journal and coupons are read
+straight from `src/data/`. Every page, the 3D experiences, the Room Studio, search, filters,
+the calculator, cart, wishlist and coupons work exactly as they do with a database. The things
+that would need to *store* data degrade honestly:
+
+| Feature | Without a database |
+| --- | --- |
+| Checkout | Clearly-labelled demo only. Prices and coupons are still verified on the server; the order is kept in the visitor's browser for its confirmation page and is **not** sent to the studio. |
+| Contact form | Validates, then opens the visitor's email app with the enquiry ready to send to `site.email` (set your real address in `src/lib/site.ts`). |
+| Admin (`/admin`) | Off — the page explains that it needs a database. |
+
+**Database (`DATA_SOURCE=database`).** Everything is read from and written to PostgreSQL via
+Prisma: real orders, the enquiry inbox, admin CRUD, cash-on-delivery and optional Razorpay. Set
+`DATABASE_URL` and `DATABASE_URL_UNPOOLED` (Neon's Vercel integration sets both), plus the
+admin variables, then run `npm run setup` to create the tables and seed the catalogue. The seed
 only fills an **empty** database, so it never overwrites prices or stock edited in the admin;
-run `SEED_FORCE=1 npm run db:seed` to re-apply the demo catalogue on purpose.
+`SEED_FORCE=1 npm run db:seed` re-applies the demo catalogue on purpose.
 
 ## Deploying to Vercel
 
-1. **Add a database:** in the Vercel project, open **Storage → Create Database → Neon
-   (Postgres)** and connect it to the project. This sets `DATABASE_URL` and
-   `DATABASE_URL_UNPOOLED` for every environment.
-2. **Add the admin variables** under **Settings → Environment Variables**: `ADMIN_EMAIL`,
-   `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET` (e.g. `openssl rand -hex 32`). Optionally the
+**Static mode needs no configuration:** import the repository and deploy. The `vercel-build`
+script generates the Prisma client and builds; it only touches a database when
+`DATA_SOURCE=database` is set, so leftover database variables are ignored. The canonical domain
+is detected from Vercel automatically; set `NEXT_PUBLIC_SITE_URL` only for a custom domain.
+
+To switch on database mode later:
+
+1. In the Vercel project, open **Storage → Create Database → Neon (Postgres)** and connect it.
+2. Under **Settings → Environment Variables**, add `DATA_SOURCE=database`, `ADMIN_EMAIL`,
+   `ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET` (e.g. `openssl rand -hex 32`); optionally the
    `RAZORPAY_*` keys.
-3. **Redeploy.** The `vercel-build` script generates the Prisma client, pushes the schema,
-   seeds the catalogue if the database is empty, then builds. The canonical domain is detected
-   from Vercel automatically; set `NEXT_PUBLIC_SITE_URL` only for a custom domain.
+3. Redeploy. The build pushes the schema and seeds the empty database before building.
 
 `prisma db push` refuses changes that would lose data, so a redeploy can't silently drop
 columns. Once the store holds real data, switch to `prisma migrate` for reviewed migrations.
@@ -51,23 +65,26 @@ columns. Once the store holds real data, switch to `prisma migrate` for reviewed
 | --- | --- |
 | `npm run dev` | Development server (Turbopack) |
 | `npm run build` / `npm start` | Production build / serve (does not touch the database schema) |
-| `npm run vercel-build` | What Vercel runs: client generate, schema push, seed-if-empty, build |
-| `npm run setup` | Textures + schema push + seed, in one step |
+| `npm run vercel-build` | What Vercel runs: client generate, then (database mode only) schema push + seed-if-empty, then build |
+| `npm run setup` | Textures, then (database mode only) schema push + seed |
 | `npm run textures` | Regenerate `public/textures/*.svg` deterministically |
 | `npm run db:push` / `npm run db:seed` | Prisma schema push / seed only |
-| `npm test` | Unit tests (calculator, pricing, order validation) |
+| `npm test` | Unit tests (calculator, pricing, order validation, static catalogue) |
 | `npm run typecheck` / `npm run lint` | TypeScript / ESLint |
 
 ## Environment (`.env`)
 
+All variables are optional in static mode.
+
 | Variable | Purpose |
 | --- | --- |
-| `DATABASE_URL` | Pooled Postgres connection used by the app |
-| `DATABASE_URL_UNPOOLED` | Direct Postgres connection used for schema pushes (same value if you have no pooler) |
+| `DATA_SOURCE` | `database` to use PostgreSQL; anything else (or unset) runs static mode |
+| `DATABASE_URL` | Database mode: pooled Postgres connection used by the app |
+| `DATABASE_URL_UNPOOLED` | Database mode: direct connection used for schema pushes (same value if you have no pooler) |
 | `NEXT_PUBLIC_SITE_URL` | Optional canonical domain override (Vercel's production domain is used by default) |
-| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Credentials for `/admin` |
-| `ADMIN_SESSION_SECRET` | Long random string signing the admin session cookie |
-| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | Optional. Empty ⇒ the store runs in clearly-labelled **demo payment mode**; set both to enable the real Razorpay checkout + server-side signature verification |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Database mode: credentials for `/admin` |
+| `ADMIN_SESSION_SECRET` | Database mode: long random string signing the admin session cookie |
+| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | Database mode, optional. Empty ⇒ clearly-labelled **demo payment mode**; set both to enable the real Razorpay checkout + server-side signature verification |
 
 Secrets live only in `.env` (git-ignored). Never put keys in frontend code.
 
@@ -112,7 +129,7 @@ labelled as demonstrations everywhere they appear.
 
 ## Admin (`/admin`)
 
-Cookie-session login (HMAC-signed, credentials from `.env`). Overview, product CRUD (products
+Database mode only. Cookie-session login (HMAC-signed, credentials from `.env`). Overview, product CRUD (products
 with order history are retired, not deleted), collection CRUD, order status management, customers,
 enquiry inbox, coupon management, and live commerce settings (shipping flat rate, free-shipping
 threshold, GST display rate) stored in the database.
@@ -132,6 +149,8 @@ threshold, GST display rate) stored in the database.
 
 ## Known limitations (honest list)
 
+- Static mode (the default) stores nothing: demo orders live only in the visitor's browser,
+  enquiries go out by email, and the admin is off. Database mode lifts all three.
 - Payments: without Razorpay credentials, orders are demo/COD only — by design, clearly labelled.
 - The catalogue is demonstration data, not verified seller inventory.
 - Room photo upload is a side-by-side reference, not perspective mapping.

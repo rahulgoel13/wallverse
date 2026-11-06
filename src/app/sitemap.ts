@@ -1,13 +1,14 @@
 import type { MetadataRoute } from "next";
-import { db } from "@/lib/db";
+import { getAllProducts, getCollections } from "@/lib/catalog";
+import { getJournalPosts } from "@/lib/journal";
 import { site } from "@/lib/site";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [products, collections, posts] = await Promise.all([
-    db.product.findMany({ select: { slug: true, updatedAt: true } }),
-    db.collection.findMany({ select: { slug: true } }),
-    db.journalPost.findMany({ select: { slug: true, publishedAt: true } }),
-  ]).catch(() => [[], [], []] as const);
+    getAllProducts(),
+    getCollections(),
+    getJournalPosts(),
+  ]);
 
   const staticRoutes = [
     "",
@@ -38,7 +39,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
     ...products.map((p) => ({
       url: `${site.url}/product/${p.slug}`,
-      lastModified: p.updatedAt,
       changeFrequency: "weekly" as const,
       priority: 0.8,
     })),

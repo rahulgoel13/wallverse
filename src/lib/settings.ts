@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
+import { usesDatabase } from "@/lib/data-source";
 import { commerce } from "@/lib/site";
 
 export interface CommerceConfig {
@@ -11,6 +12,7 @@ export interface CommerceConfig {
 
 /** Commerce configuration: admin-edited Setting rows override code defaults. */
 export async function getCommerceConfig(): Promise<CommerceConfig> {
+  if (!usesDatabase) return { ...commerce };
   try {
     const rows = await db.setting.findMany({
       where: { key: { in: ["shippingFlat", "freeShippingAbove", "taxRatePct"] } },

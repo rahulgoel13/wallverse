@@ -2,11 +2,14 @@
 
 import { randomBytes, createHmac } from "node:crypto";
 import { db } from "@/lib/db";
+import { usesDatabase } from "@/lib/data-source";
+import { getProductsBySlugs } from "@/lib/catalog";
+import { coupons } from "@/data/coupons";
 import { computeTotals, type CouponInfo } from "@/lib/pricing";
 import { getCommerceConfig } from "@/lib/settings";
-import { paymentMode } from "@/lib/site";
+import { paymentMode, site } from "@/lib/site";
 import { createOrderSchema, type CreateOrderInput } from "@/lib/validation";
-import { effectivePrice } from "@/types";
+import { effectivePrice, type OrderView } from "@/types";
 
 function orderId() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -25,7 +28,12 @@ export interface CouponCheck {
 export async function validateCoupon(code: string, subtotal: number): Promise<CouponCheck> {
   const trimmed = code.trim().toUpperCase();
   if (!trimmed) return { ok: false, message: "Enter a coupon code." };
-  const coupon = await db.coupon.findUnique({ where: { code: trimmed } });
+  const coupon = usesDatabase
+    ? await db.coupon.findUnique({ where: { code: trimmed } })
+    : (() => {
+        const c = coupons.find((x) => x.code === trimmed);
+        return c ? { ...c, expiresAt: null as Date | null } : null;
+      })();
   if (!coupon || !coupon.active) return { ok: false, message: "This coupon code is not valid." };
   if (coupon.expiresAt && coupon.expiresAt < new Date())
     return { ok: false, message: "This coupon has expired." };
@@ -48,7 +56,8 @@ export async function validateCoupon(code: string, subtotal: number): Promise<Co
 }
 
 export type CreateOrderResult =
-  | { ok: true; orderId: string; payment: "demo" | "cod" }
+  /** `order` is present in static mode: the browser keeps it, since nothing stores it server-side. */
+  | { ok: true; orderId: string; payment: "demo" | "cod"; order?: OrderView }
   | {
       ok: true;
       orderId: string;
@@ -64,11 +73,11 @@ export async function createOrder(raw: CreateOrderInput): Promise<CreateOrderRes
   }
   const input = parsed.data;
 
-  // Recompute everything server-side from the database — never trust client prices.
+  // Recompute everything server-side from the catalogue — never trust client prices.
   const SAMPLE_PRICE = 199;
   const baseSlug = (slug: string) => (slug.startsWith("sample:") ? slug.slice(7) : slug);
   const slugs = [...new Set(input.items.map((i) => baseSlug(i.slug)))];
-  const products = await db.product.findMany({ where: { slug: { in: slugs } } });
+  const products = await getProductsBySlugs(slugs);
   const bySlug = new Map(products.map((p) => [p.slug, p]));
 
   for (const item of input.items) {
@@ -102,6 +111,45 @@ export async function createOrder(raw: CreateOrderInput): Promise<CreateOrderRes
 
   const mode = paymentMode();
   const requested = input.customer.paymentMethod;
+
+  // Without a database nothing can receive or keep an order, so only the
+  // clearly-labelled demo is honest: no cash-on-delivery promise, no payment.
+  if (!usesDatabase) {
+    if (requested !== "demo") {
+      return { ok: false, error: "This store is in demo mode: only demo orders can be placed." };
+    }
+    const order: OrderView = {
+      id: orderId(),
+      status: "demo",
+      paymentMethod: "demo",
+      paymentStatus: "demo_paid",
+      subtotal: totals.subtotal,
+      discount: totals.discount,
+      shipping: totals.shipping,
+      tax: totals.taxIncluded,
+      total: totals.total,
+      couponCode: coupon?.code ?? null,
+      notes: input.customer.notes || null,
+      addressLine: input.customer.addressLine,
+      city: input.customer.city,
+      state: input.customer.state,
+      pincode: input.customer.pincode,
+      country: site.country,
+      createdAt: new Date().toISOString(),
+      customer: { name: input.customer.name, email: input.customer.email, phone: input.customer.phone },
+      items: lines.map((l) => ({
+        name: l.name,
+        unitPrice: l.unitPrice,
+        quantity: l.quantity,
+        total: l.total,
+        slug: l.product.slug,
+        texture: l.product.texture,
+      })),
+      storedLocally: true,
+    };
+    return { ok: true, orderId: order.id, payment: "demo", order };
+  }
+
   // Razorpay can only be used when configured; fall back is an explicit error, never a fake success.
   if (requested === "razorpay" && mode !== "razorpay") {
     return { ok: false, error: "Online payment is not configured on this installation. Choose demo mode or cash on delivery." };
@@ -185,6 +233,7 @@ export async function verifyRazorpayPayment(params: {
   razorpayPaymentId: string;
   razorpaySignature: string;
 }): Promise<{ ok: boolean; error?: string }> {
+  if (!usesDatabase) return { ok: false, error: "Online payment needs a database to record orders." };
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
   if (!keySecret) return { ok: false, error: "Payments are not configured." };
   const expected = createHmac("sha256", keySecret)
@@ -204,7 +253,8 @@ export async function verifyRazorpayPayment(params: {
   return { ok: true };
 }
 
-export async function getOrder(id: string) {
+export async function getOrder(id: string): Promise<OrderView | null> {
+  if (!usesDatabase) return null;
   const order = await db.order.findUnique({
     where: { id },
     include: { items: { include: { product: { select: { slug: true, texture: true, accent: true } } } }, customer: true },

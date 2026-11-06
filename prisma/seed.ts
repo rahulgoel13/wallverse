@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { collections, products, textureUrl } from "../src/data/catalogue";
 import { journalPosts } from "../src/data/journal";
+import { coupons } from "../src/data/coupons";
 
 const db = new PrismaClient();
 
@@ -68,19 +69,13 @@ async function main() {
     await db.journalPost.upsert({ where: { slug: j.slug }, update: data, create: data });
   }
 
-  await db.coupon.upsert({
-    where: { code: "WELCOME10" },
-    update: { type: "percent", value: 10, minSubtotal: 2000, active: true },
-    create: { code: "WELCOME10", type: "percent", value: 10, minSubtotal: 2000, active: true },
-  });
-  await db.coupon.upsert({
-    where: { code: "FLAT500" },
-    update: { type: "flat", value: 500, minSubtotal: 6000, active: true },
-    create: { code: "FLAT500", type: "flat", value: 500, minSubtotal: 6000, active: true },
-  });
+  for (const c of coupons) {
+    const { code, ...rest } = c;
+    await db.coupon.upsert({ where: { code }, update: rest, create: c });
+  }
 
   console.log(
-    `Seeded ${collections.length} collections, ${products.length} products, ${journalPosts.length} journal posts, 2 coupons.`
+    `Seeded ${collections.length} collections, ${products.length} products, ${journalPosts.length} journal posts, ${coupons.length} coupons.`
   );
 }
 

@@ -2,6 +2,19 @@ import "server-only";
 import { db } from "@/lib/db";
 import type { Prisma, Product, Collection } from "@prisma/client";
 import type { CollectionDTO, ProductDTO } from "@/types";
+import { usesDatabase } from "@/lib/data-source";
+import {
+  staticAllProducts,
+  staticCollection,
+  staticCollections,
+  staticFilterOptions,
+  staticProduct,
+  staticProducts,
+  staticProductsBySlugs,
+  type ShopFilters,
+} from "@/lib/catalog-static";
+
+export type { ShopFilters };
 
 type ProductWithCollection = Product & { collection: Collection };
 
@@ -50,6 +63,7 @@ export function toCollectionDTO(c: Collection & { _count?: { products: number } 
 }
 
 export async function getCollections(): Promise<CollectionDTO[]> {
+  if (!usesDatabase) return staticCollections();
   const rows = await db.collection.findMany({
     orderBy: { order: "asc" },
     include: { _count: { select: { products: true } } },
@@ -58,6 +72,7 @@ export async function getCollections(): Promise<CollectionDTO[]> {
 }
 
 export async function getCollection(slug: string) {
+  if (!usesDatabase) return staticCollection(slug);
   const c = await db.collection.findUnique({
     where: { slug },
     include: { products: { include: { collection: true }, orderBy: { popularity: "desc" } } },
@@ -66,20 +81,8 @@ export async function getCollection(slug: string) {
   return { collection: toCollectionDTO(c), products: c.products.map(toProductDTO) };
 }
 
-export interface ShopFilters {
-  q?: string;
-  collection?: string;
-  color?: string;
-  style?: string;
-  material?: string;
-  minPrice?: number;
-  maxPrice?: number;
-  sort?: "recommended" | "newest" | "price-asc" | "price-desc" | "popular";
-  page?: number;
-  perPage?: number;
-}
-
 export async function getProducts(filters: ShopFilters = {}) {
+  if (!usesDatabase) return staticProducts(filters);
   const { q, collection, color, style, material, minPrice, maxPrice, sort = "recommended", page = 1, perPage = 12 } = filters;
 
   const where: Prisma.ProductWhereInput = {};
@@ -138,12 +141,14 @@ export async function getProducts(filters: ShopFilters = {}) {
 }
 
 export async function getProduct(slug: string): Promise<ProductDTO | null> {
+  if (!usesDatabase) return staticProduct(slug);
   const p = await db.product.findUnique({ where: { slug }, include: { collection: true } });
   return p ? toProductDTO(p) : null;
 }
 
 export async function getProductsBySlugs(slugs: string[]): Promise<ProductDTO[]> {
   if (slugs.length === 0) return [];
+  if (!usesDatabase) return staticProductsBySlugs(slugs);
   const rows = await db.product.findMany({
     where: { slug: { in: slugs } },
     include: { collection: true },
@@ -153,6 +158,7 @@ export async function getProductsBySlugs(slugs: string[]): Promise<ProductDTO[]>
 }
 
 export async function getAllProducts(): Promise<ProductDTO[]> {
+  if (!usesDatabase) return staticAllProducts();
   const rows = await db.product.findMany({
     include: { collection: true },
     orderBy: [{ featured: "desc" }, { popularity: "desc" }],
@@ -161,6 +167,7 @@ export async function getAllProducts(): Promise<ProductDTO[]> {
 }
 
 export async function getFilterOptions() {
+  if (!usesDatabase) return staticFilterOptions();
   const [colors, styles, materials, price] = await Promise.all([
     db.product.findMany({ select: { colorFamily: true }, distinct: ["colorFamily"] }),
     db.product.findMany({ select: { style: true }, distinct: ["style"] }),

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { db } from "@/lib/db";
+import { getJournalPosts } from "@/lib/journal";
 import { PageHero } from "@/components/layout/PageHero";
 import { TexturePreview } from "@/components/ui/TexturePreview";
 import { Reveal } from "@/components/motion/Reveal";
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function JournalPage() {
-  const posts = await db.journalPost.findMany({ orderBy: { publishedAt: "desc" } });
+  const posts = await getJournalPosts();
 
   return (
     <div className="section-dark min-h-dvh pb-24">

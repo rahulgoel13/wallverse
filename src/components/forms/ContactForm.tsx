@@ -8,8 +8,24 @@ import { submitEnquiry } from "@/app/actions/enquiries";
 import { TextField, TextAreaField } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 
-export function ContactForm() {
+/** A ready-to-send email holding the enquiry (used when there is no database to store it). */
+function enquiryMailto(to: string, data: ContactInput) {
+  const body = [
+    data.message,
+    "",
+    "—",
+    `Name: ${data.name}`,
+    `Email: ${data.email}`,
+    data.phone ? `Phone: ${data.phone}` : null,
+  ]
+    .filter((line) => line !== null)
+    .join("\n");
+  return `mailto:${to}?subject=${encodeURIComponent(data.subject)}&body=${encodeURIComponent(body)}`;
+}
+
+export function ContactForm({ emailTo }: { emailTo?: string }) {
   const [done, setDone] = useState(false);
+  const [mailto, setMailto] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const {
     register,
@@ -17,6 +33,32 @@ export function ContactForm() {
     reset,
     formState: { errors, isSubmitting },
   } = useForm<ContactInput>({ resolver: zodResolver(contactSchema) });
+
+  if (mailto) {
+    return (
+      <div className="border border-citron/40 p-8 text-center">
+        <p className="label text-citron mb-3">Almost sent</p>
+        <p className="font-serif text-2xl">Your email app should now be open with the enquiry ready to send.</p>
+        <p className="mt-4 text-sm opacity-70">
+          Nothing opened?{" "}
+          <a href={mailto} className="text-citron underline underline-offset-4">
+            Open the email again
+          </a>{" "}
+          or write to <span className="text-citron">{emailTo}</span>.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            reset();
+            setMailto(null);
+          }}
+          className="label mt-5 opacity-60 hover:opacity-100 cursor-pointer"
+        >
+          Write another enquiry
+        </button>
+      </div>
+    );
+  }
 
   if (done) {
     return (
@@ -42,6 +84,12 @@ export function ContactForm() {
       noValidate
       onSubmit={handleSubmit(async (data) => {
         setServerError(null);
+        if (emailTo) {
+          const link = enquiryMailto(emailTo, data);
+          setMailto(link);
+          window.location.assign(link);
+          return;
+        }
         const res = await submitEnquiry(data);
         if (res.ok) setDone(true);
         else setServerError(res.error);
@@ -68,7 +116,7 @@ export function ContactForm() {
         </p>
       ) : null}
       <Button type="submit" variant="citron" className="self-start" disabled={isSubmitting}>
-        {isSubmitting ? "Sending…" : "Send enquiry"}
+        {isSubmitting ? "Sending…" : emailTo ? "Write the email" : "Send enquiry"}
       </Button>
     </form>
   );

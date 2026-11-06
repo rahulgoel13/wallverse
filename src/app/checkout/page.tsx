@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { paymentMode } from "@/lib/site";
+import { usesDatabase } from "@/lib/data-source";
 import { getCommerceConfig } from "@/lib/settings";
 import { CheckoutClient } from "@/components/checkout/CheckoutClient";
 
@@ -18,7 +19,11 @@ export default async function CheckoutPage() {
           <p className="label text-citron mb-3">Guest checkout</p>
           <h1 className="display text-4xl md:text-6xl">Delivery & payment.</h1>
         </header>
-        <CheckoutClient razorpayAvailable={paymentMode() === "razorpay"} config={config} />
+        <CheckoutClient
+          razorpayAvailable={usesDatabase && paymentMode() === "razorpay"}
+          demoOnly={!usesDatabase}
+          config={config}
+        />
       </div>
     </div>
   );

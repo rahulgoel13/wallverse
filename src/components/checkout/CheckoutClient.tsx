@@ -10,6 +10,7 @@ import { computeTotals, type CommerceLike } from "@/lib/pricing";
 import { formatINR } from "@/lib/format";
 import { checkoutSchema, type CheckoutInput } from "@/lib/validation";
 import { createOrder, verifyRazorpayPayment } from "@/app/actions/orders";
+import { saveLocalOrder } from "@/lib/local-orders";
 import { TextField, TextAreaField, SelectField } from "@/components/ui/Field";
 import { TexturePreview } from "@/components/ui/TexturePreview";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -30,9 +31,12 @@ declare global {
 
 export function CheckoutClient({
   razorpayAvailable,
+  demoOnly,
   config,
 }: {
   razorpayAvailable: boolean;
+  /** No database: orders can't reach the studio, so only the labelled demo is offered. */
+  demoOnly: boolean;
   config: CommerceLike;
 }) {
   const router = useRouter();
@@ -126,6 +130,14 @@ export function CheckoutClient({
       return;
     }
 
+    // Static mode returns the order itself: keep it in this browser for the confirmation page.
+    if ("order" in result && result.order && !saveLocalOrder(result.order)) {
+      setServerError(
+        `Demo order ${result.orderId} was created, but your browser blocked local storage, so its confirmation can't be shown.`
+      );
+      return;
+    }
+
     clear();
     router.push(`/order-confirmation/${result.orderId}`);
   };
@@ -185,8 +197,9 @@ export function CheckoutClient({
               <span>
                 <span className="label text-citron block">Demo payment mode</span>
                 <span className="text-xs opacity-60 block mt-1">
-                  No real money moves. The order is recorded as a demonstration — payments are not
-                  configured on this installation.
+                  {demoOnly
+                    ? "No real money moves and the order is not sent to the studio — this storefront is a demonstration."
+                    : "No real money moves. The order is recorded as a demonstration — payments are not configured on this installation."}
                 </span>
               </span>
             </label>
@@ -199,13 +212,15 @@ export function CheckoutClient({
                 </span>
               </label>
             ) : null}
-            <label className={`flex items-start gap-4 border p-4 cursor-pointer transition-colors ${paymentMethod === "cod" ? "border-citron" : "border-ivory/20 hover:border-ivory/50"}`}>
-              <input type="radio" value="cod" {...register("paymentMethod")} className="mt-1 accent-citron" />
-              <span>
-                <span className="label block">Cash on delivery</span>
-                <span className="text-xs opacity-60 block mt-1">Pay when the rolls arrive (demo configuration).</span>
-              </span>
-            </label>
+            {!demoOnly ? (
+              <label className={`flex items-start gap-4 border p-4 cursor-pointer transition-colors ${paymentMethod === "cod" ? "border-citron" : "border-ivory/20 hover:border-ivory/50"}`}>
+                <input type="radio" value="cod" {...register("paymentMethod")} className="mt-1 accent-citron" />
+                <span>
+                  <span className="label block">Cash on delivery</span>
+                  <span className="text-xs opacity-60 block mt-1">Pay when the rolls arrive (demo configuration).</span>
+                </span>
+              </label>
+            ) : null}
           </div>
         </fieldset>
 

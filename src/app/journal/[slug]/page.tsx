@@ -1,13 +1,13 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { db } from "@/lib/db";
+import { getJournalPost, getJournalPosts } from "@/lib/journal";
 import { TexturePreview } from "@/components/ui/TexturePreview";
 import { formatDate } from "@/lib/format";
 
 export async function generateMetadata({ params }: PageProps<"/journal/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  const post = await db.journalPost.findUnique({ where: { slug } });
+  const post = await getJournalPost(slug);
   if (!post) return { title: "Essay not found" };
   return {
     title: `${post.title} — Journal`,
@@ -18,13 +18,9 @@ export async function generateMetadata({ params }: PageProps<"/journal/[slug]">)
 
 export default async function JournalPostPage({ params }: PageProps<"/journal/[slug]">) {
   const { slug } = await params;
-  const post = await db.journalPost.findUnique({ where: { slug } });
+  const post = await getJournalPost(slug);
   if (!post) notFound();
-  const others = await db.journalPost.findMany({
-    where: { slug: { not: slug } },
-    orderBy: { publishedAt: "desc" },
-    take: 2,
-  });
+  const others = (await getJournalPosts()).filter((p) => p.slug !== slug).slice(0, 2);
 
   return (
     <div className="section-dark min-h-dvh pb-24">

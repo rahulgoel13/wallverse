@@ -51,5 +51,30 @@ export interface CartItem {
   quantity: number;
 }
 
-export const effectivePrice = (p: { price: number; salePrice: number | null }) =>
+/** An order as shown on the confirmation page (from the database, or stored in the browser in static mode). */
+export interface OrderView {
+  id: string;
+  status: string;
+  paymentMethod: string;
+  paymentStatus: string;
+  subtotal: number;
+  discount: number;
+  shipping: number;
+  tax: number;
+  total: number;
+  couponCode: string | null;
+  notes: string | null;
+  addressLine: string;
+  city: string;
+  state: string;
+  pincode: string;
+  country: string;
+  createdAt: string;
+  customer: { name: string; email: string; phone: string };
+  items: { name: string; unitPrice: number; quantity: number; total: number; slug: string; texture: string }[];
+  /** True when the order exists only in this browser (no database). */
+  storedLocally?: boolean;
+}
+
+export const effectivePrice =(p: { price: number; salePrice: number | null }) =>
   p.salePrice ?? p.price;

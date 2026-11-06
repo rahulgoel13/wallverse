@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/admin-auth";
+import { usesDatabase } from "@/lib/data-source";
 import { logoutAction } from "@/app/admin/actions";
 
 // Admin pages are per-request and behind a session: never prerender them at
@@ -19,6 +21,8 @@ const nav = [
 ] as const;
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
+  // The admin manages stored data; without a database the login page explains why it's off.
+  if (!usesDatabase) redirect("/admin/login");
   await requireAdmin();
 
   return (

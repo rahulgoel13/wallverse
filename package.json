@@ -10,10 +10,10 @@
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "textures": "node scripts/generate-textures.mjs",
-    "setup": "node scripts/generate-textures.mjs && prisma db push && prisma db seed",
+    "setup": "node scripts/generate-textures.mjs && node scripts/db-sync.mjs",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
-    "vercel-build": "prisma generate && prisma db push --skip-generate && prisma db seed && next build"
+    "vercel-build": "prisma generate && node scripts/db-sync.mjs && next build"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

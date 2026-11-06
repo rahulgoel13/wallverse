@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { usesDatabase } from "@/lib/data-source";
 import {
   createAdminSession,
   credentialsValid,
@@ -17,6 +18,7 @@ import {
 } from "@/lib/validation";
 
 async function guard() {
+  if (!usesDatabase) throw new Error("The admin needs a database (DATA_SOURCE=database).");
   if (!(await isAdmin())) throw new Error("Not authorized.");
 }
 
@@ -34,6 +36,7 @@ function revalidateCatalog() {
 /* ——— auth ——— */
 
 export async function loginAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  if (!usesDatabase) return fail("The admin needs a database to be enabled.");
   const parsed = adminLoginSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),

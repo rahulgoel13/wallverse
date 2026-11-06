@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { PageHero } from "@/components/layout/PageHero";
 import { ContactForm } from "@/components/forms/ContactForm";
 import { site } from "@/lib/site";
+import { usesDatabase } from "@/lib/data-source";
 
 export const metadata: Metadata = {
   title: "Contact the studio",
@@ -19,7 +20,8 @@ export default function ContactPage() {
         texture="/textures/limestone-weave.svg"
       />
       <div className="container-wv mt-16 grid gap-14 lg:grid-cols-[1.5fr_1fr] items-start">
-        <ContactForm />
+        {/* Without a database there is nowhere to store an enquiry: hand it to the visitor's email app. */}
+        <ContactForm emailTo={usesDatabase ? undefined : site.email} />
         <aside className="border border-ivory/15 p-7 flex flex-col gap-6" aria-label="Studio details">
           <div>
             <p className="label opacity-50 mb-2">Studio</p>
